@@ -29,7 +29,11 @@ function DashboardSkeleton() {
 
 async function Dashboard() {
     const tasks = await getTasks();
-    return <TaskBoard initialTasks={tasks} />;
+        return (
+            <div className="max-w-7xl mx-auto px-4">
+                <TaskBoard initialTasks={tasks} />
+            </div>
+        );
 }
 
 

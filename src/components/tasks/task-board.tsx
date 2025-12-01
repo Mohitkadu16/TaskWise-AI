@@ -21,7 +21,6 @@ import {
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog"
 import { TaskForm } from './task-form';
-import { deleteTask } from '@/lib/tasks';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -64,12 +63,13 @@ export function TaskBoard({ initialTasks }: TaskBoardProps) {
   
   const handleDeleteConfirm = async () => {
     if (!deletingTaskId) return;
-    const result = await deleteTask(deletingTaskId);
-    if(result.success) {
-        setTasks(prev => prev.filter(t => t.id !== deletingTaskId));
-        toast({ title: "Task deleted successfully" });
-    } else {
-        toast({ variant: 'destructive', title: "Failed to delete task" });
+    try {
+      const res = await fetch(`/api/tasks/${deletingTaskId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      setTasks(prev => prev.filter(t => t.id !== deletingTaskId));
+      toast({ title: 'Task deleted successfully' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to delete task' });
     }
     setDeletingTaskId(null);
     router.refresh();
@@ -85,15 +85,16 @@ export function TaskBoard({ initialTasks }: TaskBoardProps) {
         </Button>
       </div>
 
-      <div className="flex gap-6 overflow-x-auto pb-4 -mx-4 px-4">
+      <div className="flex flex-col md:flex-row md:items-stretch justify-center gap-4 md:gap-6 lg:gap-8 pb-4">
         {columns.map((status) => (
-          <TaskColumn
-            key={status}
-            title={status}
-            tasks={tasksByStatus[status]}
-            onEditTask={handleOpenEditModal}
-            onDeleteTask={setDeletingTaskId}
-          />
+          <div key={status} className="w-full md:w-1/3">
+            <TaskColumn
+              title={status}
+              tasks={tasksByStatus[status]}
+              onEditTask={handleOpenEditModal}
+              onDeleteTask={setDeletingTaskId}
+            />
+          </div>
         ))}
       </div>
 
@@ -106,20 +107,18 @@ export function TaskBoard({ initialTasks }: TaskBoardProps) {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingTaskId} onOpenChange={(open) => !open && setDeletingTaskId(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the task.
-            </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingTaskId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Continue</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+      {deletingTaskId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="bg-background p-6 rounded-lg shadow-lg w-[90%] max-w-md">
+            <h3 className="text-lg font-semibold">Are you absolutely sure?</h3>
+            <p className="text-sm text-muted-foreground mt-2">This action cannot be undone. This will permanently delete the task.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeletingTaskId(null)}>Cancel</Button>
+              <Button onClick={handleDeleteConfirm}>Continue</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

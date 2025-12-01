@@ -42,10 +42,10 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
   const isOverdue = isPast(dueDate) && !isToday(dueDate);
 
   return (
-    <Card className="mb-4 hover:shadow-md transition-shadow duration-200 bg-card">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <Link href={`/task/${task.id}`} className="hover:underline">
+    <Card className="mb-4 hover:shadow-md transition-shadow duration-200 bg-card w-full">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start gap-2">
+          <Link href={`/task/${task.id}`} className="hover:underline flex-1">
             <CardTitle className="text-base font-semibold">{task.title}</CardTitle>
           </Link>
           <DropdownMenu>
@@ -67,37 +67,36 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
           </DropdownMenu>
         </div>
         {task.description && (
-          <CardDescription className="text-sm pt-1 line-clamp-2">
+          <CardDescription className="text-sm pt-1">
             {task.description}
           </CardDescription>
         )}
       </CardHeader>
-      <CardFooter className="flex justify-between items-center text-sm text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={task.assignee.avatar} alt={task.assignee.name} />
-              <AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <span>{task.assignee.name}</span>
-          </div>
-          <div
-            className={cn(
-              'flex items-center gap-1.5',
-              isOverdue && 'text-destructive'
-            )}
-          >
-            <Calendar className="h-4 w-4" />
-            <span>{format(dueDate, 'MMM d')}</span>
-          </div>
+      <CardFooter className="flex flex-col items-start gap-3 text-sm text-muted-foreground pt-2">
+        <div className="flex items-center gap-2 w-full">
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={task.assignee.avatar} alt={task.assignee.name} />
+            <AvatarFallback>{task.assignee.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <span className="text-sm">{task.assignee.name}</span>
         </div>
-        <Badge
-          variant={priorityMap[task.priority].variant}
-          className="capitalize"
-        >
-          <Flag className="mr-1 h-3 w-3" />
-          {priorityMap[task.priority].label}
-        </Badge>
+        <div className="flex items-center gap-2 w-full">
+          <Calendar className="h-4 w-4" />
+          <span className={cn(
+            isOverdue && 'text-destructive'
+          )}>
+            {format(dueDate, 'MMM d')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={priorityMap[task.priority].variant}
+            className="capitalize"
+          >
+            <Flag className="mr-1 h-3 w-3" />
+            {priorityMap[task.priority].label}
+          </Badge>
+        </div>
       </CardFooter>
     </Card>
   );

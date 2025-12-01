@@ -16,12 +16,14 @@ const statusColorMap: { [key: string]: string } = {
 
 export function TaskColumn({ title, tasks, onEditTask, onDeleteTask }: TaskColumnProps) {
   return (
-    <div className="w-full md:w-1/3 lg:w-1/4 xl:w-1/5 shrink-0">
+    <div className="w-full">
       <div className="bg-muted rounded-lg p-1 h-full flex flex-col">
-        <div className="flex items-center gap-2 px-3 py-2">
-           <div className={`w-3 h-3 rounded-full ${statusColorMap[title] || 'bg-gray-400'}`}></div>
-           <h2 className="font-semibold text-base">{title}</h2>
-           <span className="ml-2 bg-primary/20 text-primary font-bold text-xs px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-3 h-3 rounded-full ${statusColorMap[title] || 'bg-gray-400'}`}></div>
+            <h2 className="font-semibold text-base truncate">{title}</h2>
+          </div>
+          <span className="bg-primary/20 text-primary font-bold text-xs px-2 py-0.5 rounded-full ml-2">
             {tasks.length}
           </span>
         </div>

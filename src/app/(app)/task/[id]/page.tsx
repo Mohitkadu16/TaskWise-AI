@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Flag, User, FileText, CheckCircle, Clock } from "lucide-react";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { format } from "date-fns";
 
 const priorityMap: {
@@ -33,6 +35,14 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
 
     return (
         <div className="container mx-auto max-w-4xl">
+            <div className="mb-4">
+                <Link href="/dashboard" className="inline-flex items-center gap-2">
+                    <Button variant="ghost" size="sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                        Back
+                    </Button>
+                </Link>
+            </div>
             <Card>
                 <CardHeader>
                     <CardTitle className="text-3xl font-bold">{task.title}</CardTitle>

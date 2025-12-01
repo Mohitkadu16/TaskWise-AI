@@ -1,3 +1,5 @@
+import { createClient } from './supabase/server';
+import { getCurrentUser } from './auth';
 import type { Task, Assignee } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -11,115 +13,259 @@ export const assignees: Assignee[] = [
   { name: 'Eva', email: 'eva@example.com', avatar: getAvatar('avatar-eva') },
 ];
 
-let tasks: Task[] = [
-  {
-    id: 'task-1',
-    title: 'Design login page UI',
-    description: 'Create a clean and modern UI for the login page, including email and password fields, and a submit button. Ensure it is responsive.',
-    status: 'Done',
-    priority: 'High',
-    dueDate: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString().split('T')[0],
-    assignee: assignees[0],
-  },
-  {
-    id: 'task-2',
-    title: 'Develop task board component',
-    description: 'Build the main task board with columns for different statuses. Task cards should be draggable in a future update.',
-    status: 'In Progress',
-    priority: 'High',
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().split('T')[0],
-    assignee: assignees[1],
-  },
-  {
-    id: 'task-3',
-    title: 'Implement "Add Task" modal',
-    description: 'Create a modal form for adding new tasks with fields for title, description, status, assignee, priority, and due date.',
-    status: 'In Progress',
-    priority: 'Medium',
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString().split('T')[0],
-    assignee: assignees[2],
-  },
-  {
-    id: 'task-4',
-    title: 'Set up placeholder API services',
-    description: 'Create placeholder functions for authentication and task management to be integrated with Supabase later.',
-    status: 'Done',
-    priority: 'Medium',
-    dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().split('T')[0],
-    assignee: assignees[0],
-  },
-  {
-    id: 'task-5',
-    title: 'Integrate AI evaluation page',
-    description: 'Connect the AI evaluation UI to the Genkit flow to get scores and suggestions for task descriptions.',
-    status: 'To Do',
-    priority: 'High',
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
-    assignee: assignees[3],
-  },
-  {
-    id: 'task-6',
-    title: 'Create user profile page',
-    description: 'Build the user profile page to display user information and provide a logout option.',
-    status: 'To Do',
-    priority: 'Low',
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString().split('T')[0],
-    assignee: assignees[4],
-  },
-  {
-    id: 'task-7',
-    title: 'Refine color scheme and typography',
-    description: 'Adjust the global CSS to match the requested soft color palette and ensure font consistency.',
-    status: 'Done',
-    priority: 'Low',
-    dueDate: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString().split('T')[0],
-    assignee: assignees[1],
-  },
-  {
-    id: 'task-8',
-    title: 'Write documentation for components',
-    description: 'Add comments and documentation for all major components to facilitate future development and maintenance.',
-    status: 'To Do',
-    priority: 'Medium',
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split('T')[0],
-    assignee: assignees[2],
-  },
-];
-
+/**
+ * Get all tasks for the current user from Supabase
+ */
 export async function getTasks(): Promise<Task[]> {
-  console.log('Fetching all tasks...');
-  // In a real app, this would be a database call.
-  return Promise.resolve(tasks);
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('No authenticated user found');
+      return [];
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching tasks:', error.message);
+      throw new Error(error.message);
+    }
+
+    // Transform database records to Task format with assignee info
+    const tasks = [] as any[];
+    for (const task of (data || [])) {
+      let assignee = { name: 'Unassigned', email: '', avatar: getAvatar('avatar-default') };
+      if (task.assignee_id) {
+        try {
+          const { data: userRow } = await supabase.from('users').select('id,email,full_name,avatar_url').eq('id', task.assignee_id).single();
+          if (userRow) {
+            assignee = { name: userRow.full_name || userRow.email, email: userRow.email || '', avatar: userRow.avatar_url || getAvatar('avatar-default') };
+          }
+        } catch (e) {
+          // ignore and leave default assignee
+        }
+      }
+      tasks.push({
+        ...task,
+        dueDate: task.due_date || new Date().toISOString().split('T')[0],
+        assignee,
+      });
+    }
+
+    return tasks;
+  } catch (error) {
+    console.error('getTasks error:', error);
+    return [];
+  }
 }
 
 export async function getTaskById(id: string): Promise<Task | undefined> {
-    console.log(`Fetching task with id: ${id}`);
-    return Promise.resolve(tasks.find(task => task.id === id));
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.log('No authenticated user found');
+      return undefined;
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching task:', error.message);
+      return undefined;
+    }
+
+    if (!data) return undefined;
+
+    // Transform to Task format
+    let assignee = { name: 'Unassigned', email: '', avatar: getAvatar('avatar-default') };
+    if (data.assignee_id) {
+      try {
+        const { data: userRow } = await supabase.from('users').select('id,email,full_name,avatar_url').eq('id', data.assignee_id).single();
+        if (userRow) {
+          assignee = { name: userRow.full_name || userRow.email, email: userRow.email || '', avatar: userRow.avatar_url || getAvatar('avatar-default') };
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return {
+      ...data,
+      dueDate: data.due_date || new Date().toISOString().split('T')[0],
+      assignee,
+    };
+  } catch (error) {
+    console.error('getTaskById error:', error);
+    return undefined;
+  }
 }
 
 export async function updateTask(id: string, updatedData: Partial<Task>): Promise<Task | undefined> {
-    console.log(`Updating task with id: ${id}`);
-    const taskIndex = tasks.findIndex(task => task.id === id);
-    if (taskIndex !== -1) {
-        tasks[taskIndex] = { ...tasks[taskIndex], ...updatedData };
-        return Promise.resolve(tasks[taskIndex]);
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error('Not authenticated');
     }
-    return Promise.resolve(undefined);
+
+    const supabase = await createClient();
+
+    const updatePayload: any = {};
+    
+    if (updatedData.title) updatePayload.title = updatedData.title;
+    if (updatedData.description) updatePayload.description = updatedData.description;
+    if (updatedData.status) updatePayload.status = updatedData.status;
+    if (updatedData.priority) updatePayload.priority = updatedData.priority;
+    if (updatedData.dueDate) updatePayload.due_date = updatedData.dueDate;
+    if (updatedData.assignee && updatedData.assignee.email) {
+      // try to resolve assignee email -> id
+      try {
+        const { data: userRow } = await supabase.from('users').select('id').eq('email', updatedData.assignee.email).single();
+        if (userRow?.id) updatePayload.assignee_id = userRow.id;
+      } catch (e) {
+        // ignore if not found
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(updatePayload)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating task:', error.message);
+      throw new Error(error.message);
+    }
+
+    if (!data) return undefined;
+
+    // build assignee info from assignee_id
+    let assignee = { name: 'Unassigned', email: '', avatar: getAvatar('avatar-default') };
+    if (data.assignee_id) {
+      try {
+        const { data: userRow } = await supabase.from('users').select('id,email,full_name,avatar_url').eq('id', data.assignee_id).single();
+        if (userRow) assignee = { name: userRow.full_name || userRow.email, email: userRow.email || '', avatar: userRow.avatar_url || getAvatar('avatar-default') };
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return {
+      ...data,
+      dueDate: data.due_date,
+      assignee,
+    };
+  } catch (error) {
+    console.error('updateTask error:', error);
+    throw error;
+  }
 }
 
 export async function addTask(newTaskData: Omit<Task, 'id'>): Promise<Task> {
-    console.log('Adding new task...');
-    const newTask: Task = {
-        id: `task-${Date.now()}`,
-        ...newTaskData,
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error('Not authenticated');
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([
+        {
+          title: newTaskData.title,
+          description: newTaskData.description,
+          status: newTaskData.status,
+          priority: newTaskData.priority,
+          due_date: newTaskData.dueDate,
+          assignee_id: null,
+          // try to resolve assignee email to id if provided
+          // (we'll attempt below after creating supabase client)
+          user_id: user.id,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating task:', error.message);
+      throw new Error(error.message);
+    }
+
+    if (!data) throw new Error('Failed to create task');
+
+    // If client provided assignee email, try to update assignee_id
+    if (newTaskData.assignee?.email) {
+      try {
+        const { data: userRow } = await supabase.from('users').select('id').eq('email', newTaskData.assignee.email).single();
+        if (userRow?.id) {
+          const { error: updateError } = await supabase.from('tasks').update({ assignee_id: userRow.id }).eq('id', data.id);
+          if (updateError) console.warn('Failed to set assignee_id after insert', updateError.message);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // return created task with transformed assignee
+    let assignee = { name: 'Unassigned', email: '', avatar: getAvatar('avatar-default') };
+    if (data.assignee_id) {
+      try {
+        const { data: userRow } = await supabase.from('users').select('id,email,full_name,avatar_url').eq('id', data.assignee_id).single();
+        if (userRow) assignee = { name: userRow.full_name || userRow.email, email: userRow.email || '', avatar: userRow.avatar_url || getAvatar('avatar-default') };
+      } catch (e) {}
+    }
+
+    return {
+      ...data,
+      dueDate: data.due_date,
+      assignee,
     };
-    tasks.unshift(newTask);
-    return Promise.resolve(newTask);
+  } catch (error) {
+    console.error('addTask error:', error);
+    throw error;
+  }
 }
 
 export async function deleteTask(id: string): Promise<{ success: boolean }> {
-    console.log(`Deleting task with id: ${id}`);
-    const initialLength = tasks.length;
-    tasks = tasks.filter(task => task.id !== id);
-    return Promise.resolve({ success: tasks.length < initialLength });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error('Not authenticated');
+    }
+
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error deleting task:', error.message);
+      throw new Error(error.message);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('deleteTask error:', error);
+    return { success: false };
+  }
 }

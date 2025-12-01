@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
-import { assignees, addTask, updateTask } from '@/lib/tasks';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { Task } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -52,17 +52,20 @@ export function TaskForm({ task, onClose }: TaskFormProps) {
 
   const defaultValues: Partial<TaskFormValues> = task
     ? {
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        dueDate: new Date(task.dueDate),
-        assigneeEmail: task.assignee.email,
+        title: task.title ?? '',
+        description: task.description ?? '',
+        status: task.status ?? 'To Do',
+        priority: task.priority ?? 'Medium',
+        dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
+        assigneeEmail: task.assignee?.email ?? '',
       }
     : {
+        title: '',
+        description: '',
         status: 'To Do',
         priority: 'Medium',
         dueDate: new Date(),
+        assigneeEmail: '',
       };
 
   const form = useForm<TaskFormValues>({
@@ -70,8 +73,18 @@ export function TaskForm({ task, onClose }: TaskFormProps) {
     defaultValues,
   });
 
+  const getAvatar = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
+
+  const ASSIGNEES = [
+    { name: 'Alice', email: 'alice@example.com', avatar: getAvatar('avatar-alice') },
+    { name: 'Bob', email: 'bob@example.com', avatar: getAvatar('avatar-bob') },
+    { name: 'Charlie', email: 'charlie@example.com', avatar: getAvatar('avatar-charlie') },
+    { name: 'David', email: 'david@example.com', avatar: getAvatar('avatar-david') },
+    { name: 'Eva', email: 'eva@example.com', avatar: getAvatar('avatar-eva') },
+  ];
+
   async function onSubmit(data: TaskFormValues) {
-    const assignee = assignees.find((a) => a.email === data.assigneeEmail);
+    const assignee = ASSIGNEES.find((a) => a.email === data.assigneeEmail);
     if (!assignee) {
       toast({
         variant: 'destructive',
@@ -89,25 +102,49 @@ export function TaskForm({ task, onClose }: TaskFormProps) {
     
     try {
       if (task) {
-        await updateTask(task.id, taskData);
-        toast({
-          title: 'Task Updated',
-          description: `"${data.title}" has been successfully updated.`,
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: taskData.title,
+            description: taskData.description,
+            status: taskData.status,
+            priority: taskData.priority,
+            dueDate: taskData.dueDate,
+            assignee: taskData.assignee,
+          }),
         });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || 'Failed to update task');
+        }
+        toast({ title: 'Task Updated', description: `"${data.title}" has been successfully updated.` });
       } else {
-        await addTask(taskData);
-        toast({
-          title: 'Task Created',
-          description: `"${data.title}" has been successfully created.`,
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: taskData.title,
+            description: taskData.description,
+            status: taskData.status,
+            priority: taskData.priority,
+            dueDate: taskData.dueDate,
+            assignee: taskData.assignee,
+          }),
         });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || 'Failed to create task');
+        }
+        toast({ title: 'Task Created', description: `"${data.title}" has been successfully created.` });
       }
       onClose();
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
        toast({
         variant: 'destructive',
         title: 'Something went wrong',
-        description: 'Could not save the task. Please try again.',
+        description: error?.message || 'Could not save the task. Please try again.',
       });
     }
   }
@@ -204,7 +241,7 @@ export function TaskForm({ task, onClose }: TaskFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {assignees.map((assignee) => (
+                    {ASSIGNEES.map((assignee) => (
                       <SelectItem key={assignee.email} value={assignee.email}>
                         {assignee.name}
                       </SelectItem>
