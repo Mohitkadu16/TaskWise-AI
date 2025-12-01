@@ -11,7 +11,7 @@ import { Logo } from '../icons/logo';
 import { useSidebar } from '@/components/ui/sidebar';
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/ai-evaluation', label: 'AI Evaluation', icon: BrainCircuit },
   { href: '/payments', label: 'Payments', icon: CreditCard },
   { href: '/profile', label: 'Profile', icon: User },

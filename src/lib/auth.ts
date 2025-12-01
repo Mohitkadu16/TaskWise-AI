@@ -7,7 +7,7 @@ export async function handleLogin(data: FormData) {
   // Placeholder for Supabase login logic.
   // In a real app, you would verify credentials against a database.
   // For this prototype, we'll just redirect to the dashboard.
-  redirect('/');
+  redirect('/dashboard');
 }
 
 export async function handleLogout() {
