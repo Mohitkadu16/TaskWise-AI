@@ -39,6 +39,7 @@ next-env.d.ts
 
 .genkit/*
 .env*
+.env.local*   # Ignore all files in the .env.local/ directory
 
 # firebase
 firebase-debug.log
