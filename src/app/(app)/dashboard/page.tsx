@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { getTasks } from '@/lib/tasks';
 import { TaskBoard } from '@/components/tasks/task-board';
 import { Suspense } from 'react';
