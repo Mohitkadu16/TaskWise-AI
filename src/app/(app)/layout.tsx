@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <UserNav />
           </header>
-          <main className="flex-1 p-4 lg:p-6">{children}</main>
+          <main className="flex-1 p-4 lg:p-6 pb-24">{children}</main>
         </SidebarInset>
       </div>
     </SidebarProvider>
